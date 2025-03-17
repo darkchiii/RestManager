@@ -1,1 +1,1 @@
-# GastroManager
+# RestManager
