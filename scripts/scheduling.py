@@ -1,14 +1,15 @@
 #
 from ortools.sat.python import cp_model
+from datetime import datetime
 
 class Employees:
-    def __init__(self, name, preferredShifts, availability, shiftRequests, maxWorkingHours):
+    def __init__(self, name, preferred_shifts, availability, shift_requests, max_working_hours):
         self.name = name
-        self.preferredShifts = preferredShifts
+        self.preferred_shifts = preferred_shifts
         self.availability = availability
-        self.shiftRequests = shiftRequests
-        self.maxWorkingHours = maxWorkingHours
-        self.maxWorkingDays = self.maxWorkingHours//8
+        self.shift_requests = shift_requests
+        self.max_working_hours = max_working_hours
+        self.max_working_days = self.max_working_hours//8
 
 employees = [
     Employees(
@@ -26,21 +27,21 @@ employees = [
         [],
         40
     ),
-    Employees(
-        "Marek",
-        [0],
-        {
-            0: [0],
-            1: [0],
-            2: [0],
-            3: [0],
-            4: [],
-            5: [0],
-            6: [],
-        },
-        [],
-        32
-    ),
+    # Employees(
+    #     "Marek",
+    #     [0],
+    #     {
+    #         0: [0],
+    #         1: [0],
+    #         2: [0],
+    #         3: [0],
+    #         4: [],
+    #         5: [0],
+    #         6: [],
+    #     },
+    #     [],
+    #     32
+    # ),
     Employees(
         "Kasia",
         [1],
@@ -116,7 +117,62 @@ employees = [
         [],
         40
     ),
+    Employees(
+        "Krzysiek",
+        [0, 1],
+        {
+            0: [0, 1],
+            1: [0, 1],
+            2: [0, 1],
+            3: [0, 1],
+            4: [0],
+            5: [0],
+            6: [0, 1]
+        },
+        [],
+        32
+    ),
 ]
+
+shifts_type = [0, 1]
+num_employees = len(employees)
+all_employees = range(num_employees)
+all_shifts = range(2)
+all_days = range(7)
+shifts_per_day = 1
+weekly_cover_demands = [
+(1, 2),
+(2, 2),
+(1, 2),
+(2, 2),
+(2, 2),
+(2, 2),
+(2, 1),
+]
+
+def DemandForEmployees():
+    start_m_shift = '07:00:00'
+    end_m_shift = '15:00:00'
+    start_a_shift = '14:30:00'
+    end_a_shift = '21:00:00'
+    FMT = '%H:%M:%S'
+    morning_shift_duration = (datetime.strptime(end_m_shift, FMT) - datetime.strptime(start_m_shift, FMT)).total_seconds()/3600
+    afternoon_shift_duration = (datetime.strptime(end_a_shift, FMT) - datetime.strptime(start_a_shift, FMT)).total_seconds()/3600
+    working_hours = 0
+    employees_available_hours = 0
+
+    for e in employees:
+        employees_available_hours += e.max_working_hours
+
+    for j in range(len(weekly_cover_demands)):
+        for i in range(len(shifts_type)):
+            if i == 0:
+                working_hours += weekly_cover_demands[j][i]*morning_shift_duration
+            if i == 1:
+                working_hours += weekly_cover_demands[j][i]*afternoon_shift_duration
+
+    print(f"Working hours after considering shift cover demands: {working_hours}")
+    print(f"Employees available hours: {employees_available_hours}")
 
 class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self, shifts, employees, all_days,
@@ -147,21 +203,8 @@ class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
 def new_schedule():
     model = cp_model.CpModel()
-    shifts_type = [0, 1]
-    num_employees = len(employees)
-    all_employees = range(num_employees)
-    all_shifts = range(2)
-    all_days = range(7)
-    shiftsPerDay = 1
-    weeklyCoverDemands = [
-    (1, 2),
-    (2, 2),
-    (1, 2),
-    (2, 2),
-    (2, 2),
-    (2, 2),
-    (2, 1),
-    ]
+
+    print(DemandForEmployees())
 
     # Creating empty matrix for employees work schedule
     print("Creating 'shifts' variables.")
@@ -170,7 +213,7 @@ def new_schedule():
         for d in all_days:
             for s in all_shifts:
                 shifts[(e,d,s)] = model.NewBoolVar(f"shift_e{e}_d{d}_s{s}")
-    print("Shifts created : ", shifts)
+    # print("Shifts created : ", shifts)
 
     # Each employee works at most one shift per day
     print("Adding one shift per day rule...")
@@ -182,7 +225,7 @@ def new_schedule():
 
     # Enforcing num of employees per shift according to cover demands
     print("Adding cover demand rule...")
-    for d, demands in enumerate(weeklyCoverDemands):
+    for d, demands in enumerate(weekly_cover_demands):
         for s, required_workers in enumerate(demands):
             model.Add(sum(shifts[(e, d, s)] for e in all_employees) == required_workers)
     print("Added.")
@@ -192,7 +235,7 @@ def new_schedule():
     for e, employee in enumerate(employees):
         def max_consecutive_days_allowed(MDaysPerWeek):
             if MDaysPerWeek == 5:
-                return 5
+                return 3
             elif MDaysPerWeek == 4:
                 return 3
             elif MDaysPerWeek == 3:
@@ -204,7 +247,7 @@ def new_schedule():
             else:
                 return 0
 
-        max_days_per_week = employee.maxWorkingDays
+        max_days_per_week = employee.max_working_days
         max_consecutive_days = max_consecutive_days_allowed(max_days_per_week)
 
         works = [model.NewBoolVar(f"works_{e}_{d}") for d in all_days]
@@ -230,7 +273,7 @@ def new_schedule():
 # Ensuring employees work only when they are available
     print("Adding works only when available rule...")
     for e, employee in enumerate(employees):
-        max_days = employee.maxWorkingDays
+        max_days = employee.max_working_days
         worked_days = []
 
         for d in all_days:
@@ -258,15 +301,15 @@ def new_schedule():
     for e, employee in enumerate(employees):
         for d in all_days:
             for s in all_shifts:
-                if s in employee.preferredShifts:
+                if s in employee.preferred_shifts:
                     preferred_assignments.append(shifts[e, d, s])
 
     model.Add(preference_score == sum(preferred_assignments))
     model.Maximize(preference_score)
     print("Added.")
 
-    # Randomly changing prorities
-    #model.Maximize(sum(shifts[(e, d, s)] * (e + d + s) for e in all_employees for d in all_days for s in all_shifts))
+    # Randomly changing prorities - to delete, don't consider restrictions
+    # model.Maximize(sum(shifts[(e, d, s)] * (e + d + s) for e in all_employees for d in all_days for s in all_shifts))
 
 #TO DO: Balance weekend shifts
 #TO DO: Minimal rest time between shifts
@@ -275,7 +318,7 @@ def new_schedule():
 # Create and run solver
     solver = cp_model.CpSolver()
     solver.parameters.enumerate_all_solutions = True
-    solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, max_solutions=30)
+    solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, max_solutions=10)
     status = solver.SolveWithSolutionCallback(model, solution_printer)
     # print(f"enumerate_all_solutions: {solver.parameters.enumerate_all_solutions}")
     # print(f"Maksymalna liczba rozwiązań: {solution_printer.max_solutions}")
