@@ -150,6 +150,10 @@ weekly_cover_demands = [
 (2, 1),
 ]
 
+# Solver
+model = cp_model.CpModel()
+solver = cp_model.CpSolver()
+
 def DemandForEmployees():
     start_m_shift = '07:00:00'
     end_m_shift = '15:00:00'
@@ -202,13 +206,12 @@ class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
             return
 
 def new_schedule():
-    model = cp_model.CpModel()
-
     print(DemandForEmployees())
 
     # Creating empty matrix for employees work schedule
     print("Creating 'shifts' variables.")
     shifts = {}
+
     for e in all_employees:
         for d in all_days:
             for s in all_shifts:
@@ -284,11 +287,11 @@ def new_schedule():
         print("Added.")
 
 # Ensuring employee don't exceed their declared max working hours per week
-        print("Adding max working hours per week rule...")
-        for d in all_days:
-            worked_today = model.NewBoolVar(f"worked_{e}_{d}")
-            model.AddMaxEquality(worked_today, [shifts[(e, d, s)] for s in all_shifts])
-            worked_days.append(worked_today)
+    print("Adding max working hours per week rule...")
+    for d in all_days:
+        worked_today = model.NewBoolVar(f"worked_{e}_{d}")
+        model.AddMaxEquality(worked_today, [shifts[(e, d, s)] for s in all_shifts])
+        worked_days.append(worked_today)
         model.Add(sum(worked_days) <= max_days)
     print("Added..")
 
@@ -308,27 +311,20 @@ def new_schedule():
     model.Maximize(preference_score)
     print("Added.")
 
-    # Randomly changing prorities - to delete, don't consider restrictions
-    # model.Maximize(sum(shifts[(e, d, s)] * (e + d + s) for e in all_employees for d in all_days for s in all_shifts))
-
 #TO DO: Balance weekend shifts
 #TO DO: Minimal rest time between shifts
 #TO DO: Considering employees required shifts
 
-# Create and run solver
-    solver = cp_model.CpSolver()
+# Run solver
+
+    #For testing purpose
+    return shifts
+
     solver.parameters.enumerate_all_solutions = True
     solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, max_solutions=10)
     status = solver.SolveWithSolutionCallback(model, solution_printer)
     # print(f"enumerate_all_solutions: {solver.parameters.enumerate_all_solutions}")
     # print(f"Maksymalna liczba rozwiązań: {solution_printer.max_solutions}")
-
-    # print("\nDebugging: Wartości zmiennych przed rozwiązaniem")
-    # for d in all_days:
-    #     for e, employee in enumerate(employees):
-    #         for s in all_shifts:
-    #             val = solver.Value(shifts[(e, d, s)])
-    #             print(f"shift_e{e}_d{d}_s{s} = {val}")
 
     if solution_printer.solution_count == 0:
         print("Nie znaleziono rozwiązania.")
