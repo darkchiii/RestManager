@@ -102,21 +102,21 @@ employees = [
         [],
         32
     ),
-    # Employees(
-    #     "Ania",
-    #     [0, 1],
-    #     {
-    #         0: [],
-    #         1: [],
-    #         2: [0, 1],
-    #         3: [0, 1],
-    #         4: [0, 1],
-    #         5: [0, 1],
-    #         6: [0, 1]
-    #     },
-    #     [],
-    #     40
-    # ),
+    Employees(
+        "Ania",
+        [0, 1],
+        {
+            0: [],
+            1: [],
+            2: [0, 1],
+            3: [0, 1],
+            4: [0, 1],
+            5: [0, 1],
+            6: [0, 1]
+        },
+        [],
+        16
+    ),
     Employees(
         "Krzysiek",
         [0, 1],
@@ -133,100 +133,6 @@ employees = [
         32
     ),
 ]
-
-# employees = [
-#     Employees(
-#         "Alice",
-#         [0, 1],  # Może pracować zarówno na zmianie 0 jak i 1
-#         {
-#             0: [0, 1],  # Poniedziałek: dostępna na zmianie 0 i 1
-#             1: [0],     # Wtorek: dostępna tylko na zmianie 0
-#             2: [0, 1],  # Środa: dostępna na zmianie 0 i 1
-#             3: [0],     # Czwartek: dostępna tylko na zmianie 0
-#             4: [0],     # Piątek: dostępna tylko na zmianie 0
-#             5: [0, 1],  # Sobota: dostępna na zmianie 0 i 1
-#             6: [0, 1]   # Niedziela: dostępna na zmianie 0 i 1
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian (shift_requests)
-#         32  # Alice może pracować maksymalnie 32 godziny tygodniowo
-#     ),
-#     Employees(
-#         "Bob",
-#         [0],  # Preferuje tylko zmianę 0
-#         {
-#             0: [0],  # Poniedziałek: dostępny tylko na zmianie 0
-#             1: [0],  # Wtorek: dostępny tylko na zmianie 0
-#             2: [0],  # Środa: dostępny tylko na zmianie 0
-#             3: [],    # Czwartek: niedostępny
-#             4: [0],   # Piątek: dostępny tylko na zmianie 0
-#             5: [],    # Sobota: niedostępny
-#             6: []     # Niedziela: niedostępny
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian
-#         24  # Bob może pracować maksymalnie 24 godziny tygodniowo
-#     ),
-#     Employees(
-#         "Charlie",
-#         [1],  # Preferuje tylko zmianę 1
-#         {
-#             0: [],   # Poniedziałek: niedostępny
-#             1: [1],  # Wtorek: dostępny tylko na zmianie 1
-#             2: [1],  # Środa: dostępny tylko na zmianie 1
-#             3: [1],  # Czwartek: dostępny tylko na zmianie 1
-#             4: [],   # Piątek: niedostępny
-#             5: [1],  # Sobota: dostępny tylko na zmianie 1
-#             6: []    # Niedziela: niedostępny
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian
-#         40  # Charlie może pracować maksymalnie 40 godzin tygodniowo
-#     ),
-#     Employees(
-#         "Diana",
-#         [0, 1],  # Może pracować na zmianach 0 i 1
-#         {
-#             0: [0, 1],  # Poniedziałek: dostępna na zmianie 0 i 1
-#             1: [0, 1],  # Wtorek: dostępna na zmianie 0 i 1
-#             2: [0, 1],  # Środa: dostępna na zmianie 0 i 1
-#             3: [0, 1],  # Czwartek: dostępna na zmianie 0 i 1
-#             4: [],       # Piątek: niedostępna
-#             5: [],       # Sobota: niedostępna
-#             6: [0, 1]    # Niedziela: dostępna na zmianie 0 i 1
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian
-#         40  # Diana może pracować maksymalnie 40 godzin tygodniowo
-#     ),
-#     Employees(
-#         "Eve",
-#         [0],  # Preferuje tylko zmianę 0
-#         {
-#             0: [0],  # Poniedziałek: dostępna tylko na zmianie 0
-#             1: [],    # Wtorek: niedostępna
-#             2: [0],   # Środa: dostępna tylko na zmianie 0
-#             3: [],    # Czwartek: niedostępna
-#             4: [0],   # Piątek: dostępna tylko na zmianie 0
-#             5: [0],   # Sobota: dostępna tylko na zmianie 0
-#             6: []     # Niedziela: niedostępna
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian
-#         32  # Eve może pracować maksymalnie 32 godziny tygodniowo
-#     ),
-#     Employees(
-#         "Frank",
-#         [1],  # Preferuje tylko zmianę 1
-#         {
-#             0: [],   # Poniedziałek: niedostępny
-#             1: [1],  # Wtorek: dostępny tylko na zmianie 1
-#             2: [1],  # Środa: dostępny tylko na zmianie 1
-#             3: [],   # Czwartek: niedostępny
-#             4: [1],  # Piątek: dostępny tylko na zmianie 1
-#             5: [1],  # Sobota: dostępny tylko na zmianie 1
-#             6: []    # Niedziela: niedostępny
-#         },
-#         [],  # Brak zgłoszonych preferencji zmian
-#         24  # Frank może pracować maksymalnie 40 godzin tygodniowo
-#     ),
-# ]
-
 
 shifts_type = [0, 1]
 num_employees = len(employees)
@@ -274,17 +180,13 @@ def demand_for_employees():
 
 def max_consecutive_days_allowed(MDaysPerWeek):
     if MDaysPerWeek == 5:
-        return 3
+        return 4
     elif MDaysPerWeek == 4:
         return 3
     elif MDaysPerWeek == 3:
         return 2
-    elif MDaysPerWeek == 2:
-        return 2
-    elif MDaysPerWeek == 1:
-        return 1
     else:
-        return 0
+        return MDaysPerWeek
 
 class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self, shifts, employees, all_days,
@@ -313,10 +215,9 @@ class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 def new_schedule():
-    print(demand_for_employees())
+    demand_for_employees()
 
 # Creating empty matrix for employees work schedule
-    print("Creating 'shifts' variables.")
     shifts = {}
 
     for e in all_employees:
@@ -324,60 +225,60 @@ def new_schedule():
             for s in all_shifts:
                 shifts[(e,d,s)] = model.NewBoolVar(f"shift_e{e}_d{d}_s{s}")
 
-# Each employee works at most one shift per day
+# Basic constraints
     print("Adding one shift per day rule...")
     for e in all_employees:
         for d in all_days:
-            # print(f"Employee {e}, Day {d}: ", [shifts[(e, d, s)] for s in all_shifts])
             model.AddAtMostOne([shifts[(e, d, s)] for s in all_shifts])
     print("Added.")
 
-# Enforcing num of employees per shift according to cover demands
+# Availability constraints
+    print("Adding works only when available rule...")
+    for e, employee in enumerate(employees):
+        print(f"{employee.name} availability: {employee.availability}")
+        for d in all_days:
+            shifts_available = employee.availability.get(d, [])
+            for s in all_shifts:
+                if s not in shifts_available:
+                    print(f"Checking: {employee.name}, day {d}, shift {s} - Allowed shifts: {employee.availability.get(d, [])}")
+                    model.Add(shifts[(e, d, s)] == 0)
+                    print(f"Restriction added, {employee.name} cant work on day {d}, shift {s}")
+        print("Added.")
+
+# Coverage of demands
     print("Adding cover demand rule...")
     for d, demands in enumerate(weekly_cover_demands):
         for s, required_workers in enumerate(demands):
             model.Add(sum(shifts[(e, d, s)] for e in all_employees) == required_workers)
     print("Added.")
 
-# Ensuring employees work only when they are available
-    print("Adding works only when available rule...")
-    for e, employee in enumerate(employees):
-        print(f"{employee.name} availability: {employee.availability}")
-        for d in all_days:
-            # shifts_available = employee.availability.get(d, [])
-            for s in all_shifts:
-                if s not in employee.availability.get(d, []):
-                    print(f"Checking: {employee.name}, day {d}, shift {s} - Allowed shifts: {employee.availability.get(d, [])}")
-                    model.Add(shifts[(e, d, s)] == 0)
-                    print(f"Restriction added, {employee.name} cant work on day {d}, shift {s}")
-        # print(f"After restriction: Employee {employee.name}, Day {d}, Shift {s} - Shift value: {solver.Value(shifts[(e, d, s)])}")
-        # model.Add(shifts[(0, 4, 1)] == 1)  # np. zmiana 1 w dzień 4, na którą Ola nie może pracować
-        print("Added.")
-
-#Maximizing declared working hours
+# Working hours constraints
     print("Adding and maximizing declared working hours per week...")
-    total_worked_hours = {}
-    # for e, employee in enumerate(employees):
-        # total_worked_hours[e] = model.NewIntVar(0, employee.max_working_hours, f"worked_hours_{employees[e].name}")
+    total_worked_minutes = {}
+    shift_durations_min = {
+        0: 480,  # 8
+        1: 390   # 6.5
+    }
 
     for e, employee in enumerate(employees):
-        shift_durations = {
-            0: 480,
-            1: 390
-        }
-        worked_hours_expr = sum(
-        shifts[(e, d, s)] * (shift_durations[s]//60) for d in all_days for s in all_shifts
+        worked_minutes_var = model.NewIntVar(0, employee.max_working_hours * 60, f"worked_minutes_{e}")
+
+        model.Add(
+            worked_minutes_var == sum(
+                shifts[(e, d, s)] * shift_durations_min[s]
+                for d in all_days
+                for s in all_shifts
+            )
         )
 
-        worked_hours = model.NewIntVar(0, employee.max_working_hours, f"worked_hours_in_hours_{employees[e].name}")
-        model.Add(worked_hours == worked_hours_expr)
-        total_worked_hours[e] = worked_hours
+        model.Add(worked_minutes_var <= employee.max_working_hours * 60)
+        total_worked_minutes[e] = worked_minutes_var
 
-    model.Maximize(sum(total_worked_hours[e] for e in range(len(employees))))
+    model.Maximize(sum(total_worked_minutes[e] for e in range(len(employees))))
     print("Added.")
 
 #TO DO: Testing
-# Ensuring balance in consecutive working days
+# Consecutive working days constraints
     print("Adding consecutive working days restrictions...")
     for e, employee in enumerate(employees):
 
@@ -390,7 +291,7 @@ def new_schedule():
             model.Add(sum(works[d:d+max_consecutive_days]) <= max_consecutive_days)
     print("Added.")
 
-# Ensuring employees work max 5 days in a week
+# Max working days in a week constraints
     print("Adding max 5 working days in a week rule...")
     for e, employee in enumerate(employees):
         maxDaysPerWeek = 5
@@ -407,38 +308,42 @@ def new_schedule():
 
 # Maximize shift assignments consistent with preferences
 # TO DO: change preference score
-    print("Adding maximize shift assignments consistent with preferences...")
-    preference_score = model.NewIntVar(0, 35, "preference_score")
-    preferred_assignments = []
+    # print("Adding maximize shift assignments consistent with preferences...")
+    # preference_score = model.NewIntVar(0, 35, "preference_score")
+    # preferred_assignments = []
 
-    for e, employee in enumerate(employees):
-        for d in all_days:
-            for s in all_shifts:
-                if s in employee.preferred_shifts:
-                    preferred_assignments.append(shifts[e, d, s])
+    # for e, employee in enumerate(employees):
+    #     for d in all_days:
+    #         for s in all_shifts:
+    #             if s in employee.preferred_shifts:
+    #                 preferred_assignments.append(shifts[e, d, s])
 
-    model.Add(preference_score == sum(preferred_assignments))
-    model.Maximize(preference_score)
-    print("Added.")
+    # model.Add(preference_score == sum(preferred_assignments))
+    # model.Maximize(preference_score)
+    # print("Added.")
 
     #For testing purpose
     # return shifts
+    # print("Liczba zmiennych:", model.Proto().variables)
+    print("Liczba ograniczeń:", len(model.Proto().constraints))
 
-    solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, solution_limit=5)
-    solver.parameters.enumerate_all_solutions = True
+    solver.parameters.max_time_in_seconds = 30.0
+    solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, 5)
     status = solver.Solve(model, solution_printer)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print("\nPodsumowanie godzin:")
         for e in all_employees:
-            print(f"Total worked hours for employee {employees[e].name}: {solver.Value(total_worked_hours[e])}")
+            minutes = solver.Value(total_worked_minutes[e])
+            hours = minutes/60
+            print(f"Total worked hours for employee {employees[e].name}: {hours}")
+            # print(f"{employees[e].name}: {hours}h/{employees[e].max_working_hours}h")
     else:
-        print("No solution found.")
-
-    if solution_printer.solution_count == 0:
-        print("Nie znaleziono żadnych rozwiązań.")
-    else:
-        print(f"Znaleziono {solution_printer.solution_count} rozwiązanie/rozwiązań.")
-
+        print("Nie znaleziono rozwiązania.")
+        print("Przyczyny mogą obejmować:")
+        print("- Niewystarczająca liczba pracowników")
+        print("- Zbyt restrykcyjne ograniczenia dostępności")
+        print("- Sprzeczne wymagania")
 
 if __name__ == "__main__":
     new_schedule()

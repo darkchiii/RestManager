@@ -34,8 +34,6 @@ def test_cover_demand_rule():
     else:
         assert False, "Solver did not find a feasible solution"
 
-def test_max_working_days_week():
-    pass
 
 def test_work_only_when_available():
     solver.parameters.max_time_in_seconds = 10
@@ -76,8 +74,9 @@ def test_work_only_when_available():
 
         print("Test passed.")
 
-def test_max_working_hours_week():
+def test_max_working_days_week():
     pass
+
 
 # Need to be fixed
 def test_consecutive_working_days_limit():
