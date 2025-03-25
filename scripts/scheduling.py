@@ -323,7 +323,6 @@ def new_schedule():
         for d in all_days:
             for s in all_shifts:
                 shifts[(e,d,s)] = model.NewBoolVar(f"shift_e{e}_d{d}_s{s}")
-    # print("Shifts created : ", shifts)
 
 # Each employee works at most one shift per day
     print("Adding one shift per day rule...")
@@ -355,11 +354,11 @@ def new_schedule():
         # model.Add(shifts[(0, 4, 1)] == 1)  # np. zmiana 1 w dzień 4, na którą Ola nie może pracować
         print("Added.")
 
-#TO DO: Maximizing declared working hours
+#Maximizing declared working hours
     print("Adding and maximizing declared working hours per week...")
     total_worked_hours = {}
-    for e, employee in enumerate(employees):
-        total_worked_hours[e] = model.NewIntVar(0, employee.max_working_hours, f"worked_hours_{employees[e].name}")
+    # for e, employee in enumerate(employees):
+        # total_worked_hours[e] = model.NewIntVar(0, employee.max_working_hours, f"worked_hours_{employees[e].name}")
 
     for e, employee in enumerate(employees):
         shift_durations = {
@@ -374,25 +373,10 @@ def new_schedule():
         model.Add(worked_hours == worked_hours_expr)
         total_worked_hours[e] = worked_hours
 
-    for e in range(len(employees)):
-        model.Add(total_worked_hours[e] <= employees[e].max_working_hours)
-
-    model.Maximize(sum(total_worked_hours[e] for e in range(len(all_employees))))
+    model.Maximize(sum(total_worked_hours[e] for e in range(len(employees))))
     print("Added.")
 
 #TO DO: Testing
-# Ensuring employee don't exceed their declared max working hours per week
-    print("Adding max working hours per week rule...")
-    for e, employee in enumerate(employees):
-        for d in all_days:
-            max_days = employee.max_working_days
-            worked_days = []
-            worked_today = model.NewBoolVar(f"worked_{e}_{d}")
-            model.AddMaxEquality(worked_today, [shifts[(e, d, s)] for s in all_shifts])
-            worked_days.append(worked_today)
-            model.Add(sum(worked_days) <= max_days)
-    print("Added.")
-
 # Ensuring balance in consecutive working days
     print("Adding consecutive working days restrictions...")
     for e, employee in enumerate(employees):
@@ -436,10 +420,6 @@ def new_schedule():
     model.Add(preference_score == sum(preferred_assignments))
     model.Maximize(preference_score)
     print("Added.")
-
-# TO DO: Balance weekend shifts
-# TO DO: Minimal rest time between shifts
-# TO DO: Considering employees required shifts
 
     #For testing purpose
     # return shifts
