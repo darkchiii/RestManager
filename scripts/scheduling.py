@@ -154,7 +154,7 @@ weekly_cover_demands = [
 model = cp_model.CpModel()
 solver = cp_model.CpSolver()
 
-def demand_for_employees():
+def schedule_diagnosis():
     start_m_shift = '07:00:00'
     end_m_shift = '15:00:00'
     start_a_shift = '14:30:00'
@@ -162,21 +162,34 @@ def demand_for_employees():
     FMT = '%H:%M:%S'
     morning_shift_duration = (datetime.strptime(end_m_shift, FMT) - datetime.strptime(start_m_shift, FMT)).total_seconds()/3600
     afternoon_shift_duration = (datetime.strptime(end_a_shift, FMT) - datetime.strptime(start_a_shift, FMT)).total_seconds()/3600
-    working_hours = 0
-    employees_available_hours = 0
 
-    for e in employees:
-        employees_available_hours += e.max_working_hours
+    total_hours_needed = sum(morning_shift_duration * morning + afternoon_shift_duration * afternoon for morning, afternoon in weekly_cover_demands)
+    total_hours_available = sum(emp.max_working_hours for emp in employees)
+    deficit = total_hours_needed - total_hours_available
 
-    for j in range(len(weekly_cover_demands)):
-        for i in range(len(shifts_type)):
-            if i == 0:
-                working_hours += weekly_cover_demands[j][i]*morning_shift_duration
-            if i == 1:
-                working_hours += weekly_cover_demands[j][i]*afternoon_shift_duration
+    if total_hours_available < total_hours_needed:
+        print(f"\n ! Brak godzin: potrzebne {total_hours_needed}, dostępne {total_hours_available}, brakuje: {deficit}")
+    else:
+        print(f"\nWorking hours after considering shift cover demands: {total_hours_needed}")
+        print(f"Employees available hours: {total_hours_available}")
 
-    print(f"Working hours after considering shift cover demands: {working_hours}")
-    print(f"Employees available hours: {employees_available_hours}")
+    for d, (morning_demand, afternoon_demand) in enumerate(weekly_cover_demands):
+        print(f"\nDzień {d+1}")
+
+        morning_availability = [emp.name for emp in employees if 0 in emp.availability.get(d, [])]
+        afternoon_availability = [emp.name for emp in employees if 1 in emp.availability.get(d, [])]
+
+        if len(morning_availability) < morning_demand:
+            print(f"\n ! Dzień {d+1} rano: dostępni: {len(morning_availability)}, {morning_availability}, zapotrzebowanie: {morning_demand}.")
+        elif len(afternoon_availability) < afternoon_demand:
+            print(f"\n ! Dzień {d+1} południe: dostępni: {len(afternoon_availability)}, {afternoon_availability}, zapotrzebowanie: {afternoon_demand}.")
+        else:
+            print("Dyspozycja pokrywa zapotrzebowanie.")
+
+    print("\nLimity pracowników")
+    for emp in employees:
+        available_days= sum(1 for d in all_days if any(s in emp.availability.get(d, []) for s in all_shifts))
+        print(f"{emp.name}: max hours - {emp.max_working_hours}, available days - {available_days}")
 
 def max_consecutive_days_allowed(MDaysPerWeek):
     if MDaysPerWeek == 5:
@@ -215,7 +228,7 @@ class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
             self.StopSearch()
 
 def new_schedule():
-    demand_for_employees()
+    schedule_diagnosis()
 
 # Creating empty matrix for employees work schedule
     shifts = {}
@@ -324,7 +337,6 @@ def new_schedule():
 
     #For testing purpose
     # return shifts
-    # print("Liczba zmiennych:", model.Proto().variables)
     print("Liczba ograniczeń:", len(model.Proto().constraints))
 
     solver.parameters.max_time_in_seconds = 30.0
