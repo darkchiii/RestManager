@@ -1,45 +1,40 @@
 from scheduling import solver, model, weekly_cover_demands, all_days, all_shifts, all_employees, employees, new_schedule, max_consecutive_days_allowed
 from ortools.sat.python import cp_model
-shifts = new_schedule()
-if shifts is None:
-    raise ValueError("new_schedule returned None.")
+import pytest
 
-def test_one_shift_per_day_rule():
+@pytest.fixture
+def solved_schedule():
     solver.parameters.max_time_in_seconds = 10
     status = solver.Solve(model)
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("test_one_shift_per_day_rule: solved")
-        for e in all_employees:
-            for d in all_days:
-                sum_of_shifts = sum(solver.Value(shifts[(e, d, s)]) for s in all_shifts)
-                assert sum_of_shifts <= 1, (
-                    f"Test failed for employee {e}, day {d}"
-                )
-                print(f"Employee {e}, day {d}, sum of shifts {sum_of_shifts}")
-        else:
-            assert False, "Solver did not find a feasible solution"
+    assert status in [cp_model.OPTIMAL, cp_model.FEASIBLE], "Solver failed"
 
-def test_cover_demand_rule():
-    solver.parameters.max_time_in_seconds = 10
-    status = solver.Solve(model)
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("test_cover_demand_rule: solved")
-        for d, demands in enumerate(weekly_cover_demands):
-            for s, required_workers in enumerate(demands):
-                assigned_workers = sum(solver.Value(shifts[(e, d, s)]) for e in all_employees)
-                assert assigned_workers == required_workers, (
-                    f"Test failed for day {d}, shift {s}: required {required_workers}, got {assigned_workers}"
-                )
-                print(f"Day {d}, Shift {s}: Expected {required_workers}, got {assigned_workers}")
-    else:
-        assert False, "Solver did not find a feasible solution"
+    shifts = new_schedule()
+    if shifts is None:
+        raise pytest.fail("new_schedule returned None.")
+
+    return solver, shifts
+
+def test_shift_coverage(solved_schedule):
+    solver, shifts = solved_schedule
+    for e in all_employees:
+        for d in all_days:
+            for s in all_shifts:
+                assert (e, d, s) in shifts, f"Brakuje klucza {e}, {d}, {s} "
 
 
-def test_work_only_when_available():
-    solver.parameters.max_time_in_seconds = 10
-    status = solver.Solve(model)
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("test_work_only_when_available: solved")
+def test_one_shift_per_day_rule(solved_schedule):
+    solver, shifts = solved_schedule
+    for e in all_employees:
+        for d in all_days:
+            assigned_shifts = sum(solver.Value(shifts[(e, d, s)]) for s in all_shifts)
+            assert assigned_shifts <= 1, (
+                "test_one_shift_per_day_rule failed"
+            )
+            print("test_one_shift_per_day_rule passed")
+
+# Availability tests
+def test_work_only_when_available(solved_schedule):
+    solver, shifts = solved_schedule
 
     print("Final schedule:")
     for d in all_days:
@@ -57,34 +52,51 @@ def test_work_only_when_available():
 
         for e, employee in enumerate(employees):
             for d in all_days:
-                available_shifts = set(employee.availability.get(d, []))
-
+                available_shifts = employee.availability.get(d, [])
                 for s in all_shifts:
-                    if (e, d, s) in shifts:
-                        shift_value = solver.Value(shifts[(e, d, s)])
-                        if shift_value == 1 and s not in available_shifts:
-                        # if s not in employee.availability.get(d, []):
-                            print(f"ERROR: {employee.name} is assigned to shift {s} on day {d}, but is not available!")
-                            print(f"Available shifts for {employee.name} on day {d}: {available_shifts}")
+                    if solver.Value(shifts[(e, d, s)]) == 1:
+                        assert s in available_shifts, f"{employee.name} wrongly assigned to shift {s} on day {d}"
 
-                            assert False, (f"Test failed: {employee.name} was assigned to shift {s} "
-                                       f"on day {d}, but should not be.")
-                    else:
-                        print(f"WARNING: Missing key ({e}, {d}, {s}) in shifts dictionary.")
-
-        print("Test passed.")
-
-def test_max_working_days_week():
-    pass
+        for e, employee in enumerate(employees):
+            for d in all_days:
+                if d not in employee.availability:
+                    for s in all_shifts:
+                        assert solver.Value(shifts[(e, d, s)] == 0), f"{employee.name} assigned to shifts {s} on day {d} but not available."
 
 
-# Need to be fixed
-def test_consecutive_working_days_limit():
-    solver.parameters.max_time_in_seconds = 10
-    status = solver.Solve(model)
+def test_cover_demand_rule(solved_schedule):
+    solver, shifts =solved_schedule
+    for d, demands in enumerate(weekly_cover_demands):
+        for s, required_workers in enumerate(demands):
+            assert sum(solver.Value(shifts[(e, d, s)]) for e in all_employees) == required_workers, (
+                f"test_cover_demand_rule failed"
+            )
+            print("test_cover_demand_rule passed")
+            # print(f"Day {d}, Shift {s}: Expected {required_workers}, got {assigned_workers}")
 
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("test_consecutive_working_days_limit: solved")
+
+def test_max_working_days_week(solved_schedule):
+    solver, shifts =solved_schedule
+    for e, employee in enumerate(employees):
+        working_days = sum(1 for d in all_days
+                           if any(solver.Value(shifts[(e,d,s)]) for s in all_shifts)
+                           )
+        assert working_days <= 5, f"{e.name} exceeded working days limit, working days - {working_days}."
+
+
+def test_working_hours_not_exceeded(solved_schedule):
+    solver, shifts =solved_schedule
+
+    for e, employee in enumerate(employees):
+        total_hours = sum(solver.Value(shifts[(e,d,s)] * (8 if s == 0 else 6.5))
+                          for d in all_days
+                          for s in all_shifts
+        )
+    assert total_hours <= employee.max_working_hours, f"{employee.name} exceeded working hours limit {total_hours - employee.max_working_hours}"
+
+
+def test_consecutive_working_days_limit(solved_schedule):
+        solver, shifts =solved_schedule
 
         for e, employee in enumerate(employees):
             max_days_per_week = employee.max_working_days
@@ -108,12 +120,4 @@ def test_consecutive_working_days_limit():
                 f"Test failed, employee {employee.name} got: {max_consecutive_found} consecutive days, max expected days: {max_consecutive_days}"
             )
             print(f"Employee {employee.name} got: {max_consecutive_found} consecutive days, allowed days: {max_consecutive_days}")
-    else:
-        assert False, "Solver did not find a feasible solution"
 
-
-if __name__ == "__main__":
-    # test_cover_demand_rule()
-    # test_one_shift_per_day_rule()
-    # test_consecutive_working_days_limit()
-    test_work_only_when_available()
