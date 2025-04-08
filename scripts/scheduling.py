@@ -185,22 +185,6 @@ def basic_diagnosis():
         print(f"\nWorking hours after considering shift cover demands: {total_hours_needed}")
         print(f"Employees available hours: {total_hours_available}")
 
-# Wyliczanie deficytów
-    for d, (morning_demand, afternoon_demand) in enumerate(weekly_cover_demands):
-        # print(f"\nDzień {d+1}")
-
-        morning_availability = [emp.name for emp in employees if 0 in emp.availability.get(d, [])]
-        afternoon_availability = [emp.name for emp in employees if 1 in emp.availability.get(d, [])]
-        morning_deficit = max(0, morning_demand-len(morning_availability))
-        afternoon_deficit = max(0, afternoon_demand-len(afternoon_availability))
-
-        if morning_deficit > 0:
-            print(f"\n ! Dzień {d+1} rano: dostępni: {len(morning_availability)}, {morning_availability}, brak: {morning_deficit}.")
-        elif len(afternoon_availability) < afternoon_demand:
-            print(f"\n ! Dzień {d+1} południe: dostępni: {len(afternoon_availability)}, {afternoon_availability}, brak: {afternoon_deficit}.")
-        else:
-            print("Dyspozycja pokrywa zapotrzebowanie.")
-
 # Wyliczanie limitów pracowników
     print("\nLimity pracowników")
     for emp in employees:
@@ -217,28 +201,66 @@ def max_consecutive_days_allowed(MDaysPerWeek):
     else:
         return MDaysPerWeek
 
-class MultipleSolutionPrinter(cp_model.CpSolverSolutionCallback):
+class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self, shifts, employees, all_days,
-                 all_shifts, solution_limit=5):
+                 all_shifts, violations, solution_limit=5):
         super().__init__()
         self.shifts = shifts
         self.employees = employees
         self.all_days = all_days
         self.all_shifts = all_shifts
+        self.violations = violations
         self.solution_count = 0
+        self.solutions = []
         self.solution_limit = solution_limit
 
     def on_solution_callback(self):
         self.solution_count += 1
-        # if self.solution_count <= self.solution_limit
-        print(f"\n Rozwiązanie {self.solution_count}")
 
-        for d in self.all_days:
+        shortage_score = sum(self.Value(self.violations[f"coverage_d{d}_s{s}"]) for d in self.all_days for s in self.all_shifts)
+
+        total_score = (
+            shortage_score * 1000
+        )
+
+        solution = {
+            'shortage': shortage_score,
+            'total_score': total_score,
+            'solution_id': self.solution_count,
+            'values': {(e, d, s): self.Value(self.shifts[(e, d, s)])
+                       for e in all_employees
+                       for d in self.all_days
+                       for s in self.all_shifts
+                       }
+        }
+
+        self.solutions.append(solution)
+
+        if self.solution_count >= self.solution_limit:
+            self.StopSearch()
+
+    def print_sorted_solutions(self):
+        self.solutions.sort(key=lambda x: x['total_score'])
+
+        for i, sol in enumerate(self.solutions, 1):
+            print(f"\nRozwiązanie {i}, total score: {sol['total_score']}")
+            self.print_single_solution(sol)
+
+    def print_single_solution(self, solution):
+        for d in all_days:
             print(f"Dzień {d+1}")
-            for e, employee in enumerate(self.employees):
-                for s in self.all_shifts:
-                    if self.Value(self.shifts[(e, d, s)]) == 1:
-                        print(f" {employee.name} pracuje na zmianie {s}")
+            for e, employee in enumerate(employees):
+                for s in all_shifts:
+                    if solution['values'].get((e, d, s), 0):
+                        print(f"{employee.name} pracuje", f"{'na zmianie 0' if s == 0 else 'na zmianie 1'}" )
+
+    # def get_best_solution(self):
+    #     if self.solutions:
+    #         return self.solutions[0]
+    #     return "Brak najlepszego rozwiązania"
+
+    def solution_count(self):
+        return self.solution_count
 
 def build_base_model():
     model = cp_model.CpModel()
@@ -248,10 +270,9 @@ def build_base_model():
         for d in all_days:
             for s in all_shifts:
                 shifts[(e, d, s)] = model.NewBoolVar(f"shift_e{e}_d{d}_s{s}")
-
     return model, shifts
 
-def add_basic_constraints(model, shifts):
+def add_hard_constraints(model, shifts):
 # One shift per day constraint
     for e in all_employees:
         for d in all_days:
@@ -280,7 +301,7 @@ def add_basic_constraints(model, shifts):
 
         model.Add(sum(worked_days) <= maxDaysPerWeek)
 
-# Coverage of demands constraint
+# Coverage of demands soft constraint
 def add_soft_coverage(model, shifts):
     violations = {}
     for d, (morning_demand, afternoon_demand) in enumerate(weekly_cover_demands):
@@ -290,6 +311,7 @@ def add_soft_coverage(model, shifts):
 
             model.Add(sum(shifts[(e,d,s)] for e in all_employees) + shortage == demand)
             violations[f"coverage_d{d}_s{s}"] = shortage
+            # model.AddPenalty(shortage, 1000)
     return violations
 
 # Working hours constraint
@@ -310,7 +332,6 @@ def add_working_hours_constraint(model, shifts):
                 for s in all_shifts
             )
         )
-
         model.Add(worked_minutes_var <= employee.max_working_hours * 60)
         total_worked_minutes[e] = worked_minutes_var
 
@@ -329,7 +350,7 @@ def add_consecutive_working_days_constraint(model, shifts):
             model.Add(sum(works[d:d+max_consecutive_days]) <= max_consecutive_days)
     # print("Added.")
 
-# Maximize shift assignments consistent with preferences
+# Maximize shift assignments consistent with preferences SOFT
 def add_shift_preferences(model, shifts):
 # TO DO: change preference score
     # print("Adding maximize shift assignments consistent with preferences...")
@@ -350,8 +371,7 @@ def add_shift_preferences(model, shifts):
 if __name__ == "__main__":
     basic_diagnosis()
     model, shifts = build_base_model()
-
-    add_basic_constraints(model, shifts)
+    add_hard_constraints(model, shifts)
     add_working_hours_constraint(model, shifts)
     total_worked_minutes = add_working_hours_constraint(model, shifts)
     add_consecutive_working_days_constraint(model, shifts)
@@ -359,11 +379,11 @@ if __name__ == "__main__":
     violations = add_soft_coverage(model, shifts)
     print("Liczba ograniczeń:", len(model.Proto().constraints))
 
-    model.Minimize(sum(violations.values()))
-
-    solution_printer = MultipleSolutionPrinter(shifts, employees, all_days, all_shifts, 5)
+    solution_printer = OptimalSolutionPrinter(shifts, employees, all_days, all_shifts, violations,  5)
     solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 120
     status = solver.Solve(model, solution_printer)
+    solution_printer.print_sorted_solutions()
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("\nPodsumowanie naruszeń:")
@@ -388,5 +408,5 @@ if __name__ == "__main__":
     else:
         print("Nie znaleziono rozwiązania")
         print(f"- Liczba konfliktów: {solver.num_conflicts}")
-        print("- Niewystarczająca liczba pracowników")
-        print("- Zbyt restrykcyjne ograniczenia")
+        print(f"- Czas: {solver.wall_time}")
+        print(f"Znalezine rozwiązania: {solution_printer.solution_count()}")
