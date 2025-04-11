@@ -165,18 +165,23 @@ weekly_cover_demands = [
 (2, 2),
 (2, 3),
 ]
+max_working_hours_per_week = 40
 num_shifts = sum(morning + afternoon for morning, afternoon in weekly_cover_demands)
+
+start_m_shift = '07:00:00'
+end_m_shift = '15:00:00'
+start_a_shift = '14:30:00'
+end_a_shift = '21:00:00'
+FMT = '%H:%M:%S'
+morning_shift_duration = (datetime.strptime(end_m_shift, FMT) - datetime.strptime(start_m_shift, FMT)).total_seconds()/3600
+afternoon_shift_duration = (datetime.strptime(end_a_shift, FMT) - datetime.strptime(start_a_shift, FMT)).total_seconds()/3600
+shift_durations = {
+    0: (datetime.strptime(end_m_shift, FMT) - datetime.strptime(start_m_shift, FMT)).total_seconds()/3600,
+    1: (datetime.strptime(end_a_shift, FMT) - datetime.strptime(start_a_shift, FMT)).total_seconds()/3600
+}
 
 def basic_diagnosis():
 # Wyliczanie dostępnych godzin pracowników i zapotrzebowania
-    start_m_shift = '07:00:00'
-    end_m_shift = '15:00:00'
-    start_a_shift = '14:30:00'
-    end_a_shift = '21:00:00'
-    FMT = '%H:%M:%S'
-    morning_shift_duration = (datetime.strptime(end_m_shift, FMT) - datetime.strptime(start_m_shift, FMT)).total_seconds()/3600
-    afternoon_shift_duration = (datetime.strptime(end_a_shift, FMT) - datetime.strptime(start_a_shift, FMT)).total_seconds()/3600
-
     total_hours_needed = sum(morning_shift_duration * morning + afternoon_shift_duration * afternoon for morning, afternoon in weekly_cover_demands)
     total_hours_available = sum(emp.max_working_hours for emp in employees)
     deficit = total_hours_needed - total_hours_available
@@ -261,14 +266,25 @@ class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
         for d in all_days:
             print(f"Dzień {d+1}")
+            assigned_employees = set()
             for e, employee in enumerate(employees):
                 for s in all_shifts:
                     if solution['values'].get((e, d, s), 0):
                         print(f"{employee.name} pracuje", f"{'na zmianie 0' if s == 0 else 'na zmianie 1'}" )
+                        assigned_employees.add(e)
 
             for s in all_shifts:
                 if solution['shortage_week'][d][s] > 0:
-                    print(f"[KRYTYCZNY] Braki pracowników na dzień {d+1} na zmianę {s}\n")
+                    print(f"[KRYTYCZNY] Braki pracowników na dzień {d+1} na zmianę {s}")
+                    available_employees = [employee.name for e, employee in enumerate(employees)
+                           if s in employee.availability.get(d, [])
+                           and e not in assigned_employees
+                           and employee.max_working_hours - solution['total_worked_time'][e] >= shift_durations[s]]
+                    could_work = [employee.name for e, employee in enumerate(employees)
+                                  if e not in assigned_employees
+                                  and solution['total_worked_time'][e] + shift_durations[s] <= max_working_hours_per_week]
+                    print("Dostępni, nieprzypisani:",available_employees,)
+                    print("Poproś o przyjęcie zmiany: ", could_work, "\n")
 
         print(f"\nGodziny pracy:")
         for e, emp in enumerate(employees):
@@ -429,4 +445,4 @@ if __name__ == "__main__":
         print("Nie znaleziono rozwiązania")
         print(f"- Liczba konfliktów: {solver.num_conflicts}")
         print(f"- Czas: {solver.wall_time}")
-        print(f"Znalezine rozwiązania: {solution_printer.solution_count()}")
+        print(f"Znalezione rozwiązania: {solution_printer.solution_count()}")
