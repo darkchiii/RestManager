@@ -335,6 +335,7 @@ def add_soft_coverage(model, shifts):
             violations[f"coverage_d{d}_s{s}"] = shortage
     return violations
 
+
 # Working hours constraint
 def add_working_hours_constraint(model, shifts):
     total_worked_minutes = {}
@@ -344,8 +345,8 @@ def add_working_hours_constraint(model, shifts):
     }
 
     for e, employee in enumerate(employees):
-        worked_minutes_var = model.NewIntVar(0, employee.max_working_hours * 60, f"worked_minutes_{e}")
-
+        max_working_minutes = employee.max_working_hours * 60
+        worked_minutes_var = model.NewIntVar(0, max_working_minutes, f"worked_minutes_{e}")
         model.Add(
             worked_minutes_var == sum(
                 shifts[(e, d, s)] * shift_durations_min[s]
@@ -356,7 +357,17 @@ def add_working_hours_constraint(model, shifts):
         model.Add(worked_minutes_var <= employee.max_working_hours * 60)
         total_worked_minutes[e] = worked_minutes_var
 
-    model.Maximize(sum(total_worked_minutes[e] for e in range(len(employees))))
+# Maximize equal shift assignment
+    coverage_percentage = {}
+    min_coverage = model.NewIntVar(0, 100, "min_coverage")
+    for e, employee in enumerate(employees):
+        coverage_percentage[e] = model.NewIntVar(0, 100, f"coverage percentage_{e}")
+        scaled_minutes = model.NewIntVar(0, max_working_minutes * 100, f"scaled_minutes")
+        model.Add(scaled_minutes == total_worked_minutes[e]*100)
+        model.AddDivisionEquality(coverage_percentage[e], scaled_minutes, max_working_minutes)
+        model.Add(min_coverage <= coverage_percentage[e])
+
+    model.Maximize(min_coverage * 1000 + sum(total_worked_minutes[e] for e in all_employees))
     return total_worked_minutes
 
 def add_consecutive_working_days_constraint(model, shifts):
