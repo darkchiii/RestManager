@@ -1,5 +1,6 @@
 from ortools.sat.python import cp_model
 from datetime import datetime
+from collections import defaultdict
 
 class Employees:
     def __init__(self, name, preferred_shifts, availability, shift_requests, max_working_hours):
@@ -164,6 +165,7 @@ weekly_cover_demands = [
 (2, 2),
 (2, 3),
 ]
+num_shifts = sum(morning + afternoon for morning, afternoon in weekly_cover_demands)
 
 def basic_diagnosis():
 # Wyliczanie dostępnych godzin pracowników i zapotrzebowania
@@ -203,7 +205,7 @@ def max_consecutive_days_allowed(MDaysPerWeek):
 
 class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self, shifts, employees, all_days,
-                 all_shifts, violations, total_worked_minutes, solution_limit=5):
+                 all_shifts, violations, total_worked_minutes, solution_limit=3):
         super().__init__()
         self.shifts = shifts
         self.employees = employees
@@ -219,23 +221,24 @@ class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
         self.solution_count += 1
 
         shortage_score = sum(self.Value(self.violations[f"coverage_d{d}_s{s}"]) for d in self.all_days for s in self.all_shifts)
+        shortage_week = defaultdict(list)
+        for d in self.all_days:
+            for s in self.all_shifts:
+                shortage_week[d].append(self.Value(self.violations[f"coverage_d{d}_s{s}"]))
 
         total_score = (
             shortage_score * 1000
         )
         total_work = {}
         for e, emp in enumerate(self.employees):
-            # print(f"Total worked for {emp.name}: {self.total_worked_minutes[e]}")
             minutes = self.Value(total_worked_minutes[e])
             hours = minutes/60
             total_work[e] = hours
-            # print(f"Total worked for {emp.name}: {total_work[e]}")
-
-        # total_worked_hours = self.total_worked_minutes/60
 
         solution = {
             'shortage': shortage_score,
-            'total_worked': total_work,
+            'shortage_week': shortage_week,
+            'total_worked_time': total_work,
             'total_score': total_score,
             'solution_id': self.solution_count,
             'values': {(e, d, s): self.Value(self.shifts[(e, d, s)])
@@ -247,17 +250,15 @@ class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
 
         self.solutions.append(solution)
 
-        if self.solution_count >= self.solution_limit:
-            self.StopSearch()
-
     def print_sorted_solutions(self):
         self.solutions.sort(key=lambda x: x['total_score'])
 
-        for i, sol in enumerate(self.solutions, 1):
+        for i, sol in enumerate(self.solutions[:self.solution_limit], 1):
             print(f"\nRozwiązanie {i}, total score: {sol['total_score']}")
-            self.print_single_solution(sol)
+            self.print_single_solution(sol,)
 
     def print_single_solution(self, solution):
+
         for d in all_days:
             print(f"Dzień {d+1}")
             for e, employee in enumerate(employees):
@@ -265,14 +266,20 @@ class OptimalSolutionPrinter(cp_model.CpSolverSolutionCallback):
                     if solution['values'].get((e, d, s), 0):
                         print(f"{employee.name} pracuje", f"{'na zmianie 0' if s == 0 else 'na zmianie 1'}" )
 
+            for s in all_shifts:
+                if solution['shortage_week'][d][s] > 0:
+                    print(f"[KRYTYCZNY] Braki pracowników na dzień {d+1} na zmianę {s}\n")
+
         print(f"\nGodziny pracy:")
         for e, emp in enumerate(employees):
-            print(f"{emp.name} pracuje {solution['total_worked'][e]}h/{emp.max_working_hours}h | {round((solution['total_worked'][e]/emp.max_working_hours) * 100, 2)}% dyspozycji")
+            coverage_percent = round((solution['total_worked_time'][e]/emp.max_working_hours) * 100, 2)
+            print(f"{emp.name} pracuje {solution['total_worked_time'][e]}h/{emp.max_working_hours}h | {coverage_percent}% dyspozycji", "| " f"{'[za mało godzin]' if coverage_percent < 80 else ''}")
 
-    # def get_best_solution(self):
-    #     if self.solutions:
-    #         return self.solutions[0]
-    #     return "Brak najlepszego rozwiązania"
+    def get_best_solution(self):
+        if self.solutions:
+            print("\nNajlepsze rozwiązanie:")
+            print(self.solutions[0])
+        return "Brak najlepszego rozwiązania"
 
     def solution_count(self):
         return self.solution_count
@@ -326,7 +333,6 @@ def add_soft_coverage(model, shifts):
 
             model.Add(sum(shifts[(e,d,s)] for e in all_employees) + shortage == demand)
             violations[f"coverage_d{d}_s{s}"] = shortage
-            # model.AddPenalty(shortage, 1000)
     return violations
 
 # Working hours constraint
@@ -363,25 +369,20 @@ def add_consecutive_working_days_constraint(model, shifts):
 
         for d in range(len(all_days)-max_consecutive_days):
             model.Add(sum(works[d:d+max_consecutive_days]) <= max_consecutive_days)
-    # print("Added.")
 
-# Maximize shift assignments consistent with preferences SOFT
 def add_shift_preferences(model, shifts):
-# TO DO: change preference score
-    # print("Adding maximize shift assignments consistent with preferences...")
-    # preference_score = model.NewIntVar(0, 35, "preference_score")
-    # preferred_assignments = []
+    preference_score = model.NewIntVar(0, num_shifts, "preference_score")
+    preferred_assignments = []
 
-    # for e, employee in enumerate(employees):
-    #     for d in all_days:
-    #         for s in all_shifts:
-    #             if s in employee.preferred_shifts:
-    #                 preferred_assignments.append(shifts[e, d, s])
+    for e, employee in enumerate(employees):
+        for d in all_days:
+            for s in all_shifts:
+                if s in employee.preferred_shifts:
+                    preference_score += 1
+                    preferred_assignments.append(shifts[e, d, s])
 
-    # model.Add(preference_score == sum(preferred_assignments))
-    # model.Maximize(preference_score)
-    # print("Added.")
-    pass
+    model.Add(preference_score == sum(preferred_assignments))
+    model.Maximize(preference_score)
 
 if __name__ == "__main__":
     basic_diagnosis()
@@ -393,11 +394,12 @@ if __name__ == "__main__":
     violations = add_soft_coverage(model, shifts)
     print("Liczba ograniczeń:", len(model.Proto().constraints))
 
-    solution_printer = OptimalSolutionPrinter(shifts, employees, all_days, all_shifts, violations, total_worked_minutes,  5)
+    solution_printer = OptimalSolutionPrinter(shifts, employees, all_days, all_shifts, violations, total_worked_minutes, 3)
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 120
+    solver.parameters.max_time_in_seconds = 180
     status = solver.Solve(model, solution_printer)
     solution_printer.print_sorted_solutions()
+    solution_printer.get_best_solution()
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("\nPodsumowanie naruszeń:")
@@ -405,7 +407,6 @@ if __name__ == "__main__":
         for d in all_days:
             for s in all_shifts:
                 shortage = solver.Value(violations[f"coverage_d{d}_s{s}"])
-                print(f"shortage - {shortage}")
                 if shortage > 0:
                     any_violations = True
                     print(f"Dzień {d+1}, zmiana {s}: brakuje {shortage} pracowników")
