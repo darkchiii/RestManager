@@ -165,6 +165,7 @@ weekly_cover_demands = [
 (2, 2),
 (2, 3),
 ]
+time_between_shifts = None
 max_working_hours_per_week = 40
 num_shifts = sum(morning + afternoon for morning, afternoon in weekly_cover_demands)
 
