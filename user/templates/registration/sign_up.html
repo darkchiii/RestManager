@@ -1,8 +1,62 @@
-{% extends "base.html" %} {% block title %}Sign up{% endblock %}
-{% load crispy_forms_tags %} {% block content %}
-<form method="post">
-    {% csrf_token %}{{form|crispy}}
-    <p>Have an account? <a href="/login">Login</a></p>
-    <button type="submit" class="btn bt n-success">Register</button>
-</form>
+{% extends "base.html" %}
+
+{% block title %}
+    Sign up
+{% endblock %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.username|as_crispy_field }}
+        {{ form.email|as_crispy_field }}
+        {{ form.password1|as_crispy_field }}
+        {{ form.password2|as_crispy_field }}
+
+        <div class="form-check mb-2">
+            <p>Are you employee or employer?</p>
+
+            <input class="form-check-input" type="radio" name="role" id="exampleRadios1" value="EMPLOYEE" checked>
+            <label class="form-check-label" for="exampleRadios1">
+                Employee
+            </label>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="radio" name="role" id="exampleRadios2" value="EMPLOYER">
+            <label class="form-check-label" for="exampleRadios2">
+                Employer
+            </label>
+        </div>
+
+        <div id="business-code-wrapper" style="display: none;">
+            {{ form.business_code|as_crispy_field }}
+        </div>
+
+        <p>Have an account? <a href="/login">Login</a></p>
+
+        <button type="submit" class="btn btn-success mt-3">Register</button>
+    </form>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const roleInputs = document.querySelectorAll('input[name="role"]');
+            const codeWrapper = document.getElementById('business-code-wrapper');
+
+            function toggleCodeField() {
+                const selectedRole = document.querySelector('input[name="role"]:checked').value;
+                if (selectedRole === 'EMPLOYEE') {
+                    codeWrapper.style.display = 'block';
+                } else {
+                    codeWrapper.style.display = 'none';
+                }
+            }
+            roleInputs.forEach(input => input.addEventListener('change', toggleCodeField));
+            toggleCodeField();  // Initial check on page load
+        });
+    </script>
 {% endblock %}

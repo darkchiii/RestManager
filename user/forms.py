@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)
+    business_code = forms.CharField(required=False)
+    role = forms.ChoiceField(choices=[('EMPLOYEE', 'Employee'), ('EMPLOYER', 'Employer')], widget=forms.RadioSelect)
 
     class Meta:
         model = User
