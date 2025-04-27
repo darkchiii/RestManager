@@ -33,7 +33,7 @@ def sign_up(request):
                     messages.error(request, "Invalid business code.")
                     return render(request, 'registration/sign_up.html', {"form": form})
                 business = Business.objects.get(code=business_code)
-                UserProfile.objects.create(user=user, role=role, business=business_code)
+                UserProfile.objects.create(user=user, role=role, business=business)
 
             login(request, user)
             return redirect('/home')
@@ -42,11 +42,3 @@ def sign_up(request):
 
     return render(request, 'registration/sign_up.html', {"form": form})
 
-
-    '''
-    # role pobierane z forms
-    # business field
-    if employer -> create object Business z unikalnym kodem
-    if employee -> szukamy objektu business z taką wartością w polu code
-        tworzymy klucz obcy do tego obiektu
-    '''
