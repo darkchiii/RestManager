@@ -18,7 +18,6 @@ def sign_up(request):
         form = forms.RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-
             role = form.cleaned_data['role']
 
             if role == 'EMPLOYER':
